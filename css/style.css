@@ -1,0 +1,993 @@
+/* ============================================================
+   ZZZ Timeline — ASCII Terminal Style + Theme Toggle
+   ============================================================ */
+
+:root {
+    --bg: #0a0a0a;
+    --card-bg: #111111;
+    --border: #2a2a2a;
+    --accent: #33ff66;
+    --amber: #ccaa00;
+    --text: #b0b0b0;
+    --muted: #666666;
+    --heading: #e0e0e0;
+    --line: #1a331a;
+    --overlay: rgba(0,0,0,0.72);
+    --hover-overlay: rgba(0,0,0,0.35);
+    --story-bg: #181818;
+
+    --font-mono: "Courier New", "Consolas", "Menlo", "Source Code Pro", monospace;
+    --font-cjk: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    --font-art: "hongleixingshu", "鸿雷行书简体", "Liu Jian Mao Cao", "Zhi Mang Xing", cursive;
+
+    --max-width: 75vw;
+    --line-offset: 48px;
+    --card-offset: 80px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+}
+
+:root.light {
+    --bg: #f2f2f2;
+    --card-bg: #ffffff;
+    --border: #d0d0d0;
+    --accent: #1a7a3a;
+    --amber: #8a6d00;
+    --text: #3a3a3a;
+    --muted: #888888;
+    --heading: #111111;
+    --line: #b8d8b8;
+    --overlay: rgba(0,0,0,0.15);
+    --hover-overlay: rgba(0,0,0,0.05);
+    --story-bg: #e8e8e8;
+}
+
+/* ----------------------------------------------------------
+   Reset
+   ---------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-cjk);
+    background-color: var(--bg);
+    background-image:
+        radial-gradient(ellipse 60% 50% at 30% 20%, color-mix(in srgb, var(--accent) calc(var(--glow-strength, 12) * 1%), transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 70% 60%, color-mix(in srgb, var(--amber) calc(var(--glow-strength, 12) * 0.83%), transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 80%, color-mix(in srgb, var(--accent) calc(var(--glow-strength, 12) * 0.67%), transparent) 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 96%, var(--card-bg)) 40%, color-mix(in srgb, var(--bg) 96%, var(--card-bg)) 70%, var(--bg) 100%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, color-mix(in srgb, var(--heading) calc(var(--grid-strength, 4) * 1%), transparent) 2px, color-mix(in srgb, var(--heading) calc(var(--grid-strength, 4) * 1%), transparent) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, color-mix(in srgb, var(--heading) calc(var(--grid-strength, 4) * 1%), transparent) 2px, color-mix(in srgb, var(--heading) calc(var(--grid-strength, 4) * 1%), transparent) 4px);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    transition: background-color 0.35s ease, color 0.35s ease;
+    animation: bgShift var(--anim-speed, 20s) ease-in-out infinite alternate;
+}
+
+@keyframes bgShift {
+    0%   { background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0 0, 0 0; }
+    100% { background-position: 2% 1%, -1% 2%, 1% -1%, 0% 0%, 0 0, 0 0; }
+}
+
+/* ----------------------------------------------------------
+   Background diffusion layer
+   ---------------------------------------------------------- */
+.bg-diffuse {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+}
+
+.bg-diffuse--active {
+    opacity: 1;
+}
+
+.bg-diffuse::before {
+    content: "";
+    position: absolute;
+    top: var(--diffuse-y, 50%);
+    left: var(--diffuse-x, 50%);
+    width: var(--diffuse-size, 0px);
+    height: var(--diffuse-size, 0px);
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--diffuse-color, transparent) calc(var(--diffuse-strength, 18) * 1%), transparent) 0%, transparent 70%);
+    transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.bg-diffuse--active::before {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* ----------------------------------------------------------
+   Fluid flowing background
+   ---------------------------------------------------------- */
+.bg-fluid {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    overflow: hidden;
+    filter: blur(80px);
+}
+
+.bg-fluid__blob {
+    position: absolute;
+    border-radius: 50%;
+    opacity: calc(var(--fluid-strength, 35) * 0.01);
+}
+
+.bg-fluid__blob--1 {
+    width: 60vw;
+    height: 60vw;
+    max-width: 700px;
+    max-height: 700px;
+    background: var(--fluid-color-1, color-mix(in srgb, var(--accent) 100%, transparent));
+    transition: background 0.8s ease;
+    animation: fluid1 18s ease-in-out infinite alternate;
+}
+
+.bg-fluid__blob--2 {
+    width: 50vw;
+    height: 50vw;
+    max-width: 600px;
+    max-height: 600px;
+    background: var(--fluid-color-2, color-mix(in srgb, var(--amber) 100%, transparent));
+    transition: background 0.8s ease;
+    animation: fluid2 22s ease-in-out infinite alternate;
+}
+
+.bg-fluid__blob--3 {
+    width: 40vw;
+    height: 40vw;
+    max-width: 500px;
+    max-height: 500px;
+    background: var(--fluid-color-3, color-mix(in srgb, var(--accent) 100%, transparent));
+    transition: background 0.8s ease;
+    animation: fluid3 20s ease-in-out infinite alternate;
+}
+
+@keyframes fluid1 {
+    0%   { top: -20%; left: -10%; transform: scale(1) rotate(0deg); }
+    33%  { top: 40%;  left: 20%; transform: scale(1.3) rotate(10deg); }
+    66%  { top: 60%;  left: -15%; transform: scale(0.8) rotate(-5deg); }
+    100% { top: 10%;  left: 50%; transform: scale(1.1) rotate(8deg); }
+}
+
+@keyframes fluid2 {
+    0%   { top: 60%;  left: 60%; transform: scale(0.9) rotate(0deg); }
+    33%  { top: 20%;  left: 30%; transform: scale(1.2) rotate(-8deg); }
+    66%  { top: -10%; left: 70%; transform: scale(1) rotate(5deg); }
+    100% { top: 50%;  left: 10%; transform: scale(1.3) rotate(-3deg); }
+}
+
+@keyframes fluid3 {
+    0%   { top: 30%;  left: 80%; transform: scale(0.8) rotate(0deg); }
+    33%  { top: -15%; left: 40%; transform: scale(1.3) rotate(12deg); }
+    66%  { top: 70%;  left: 50%; transform: scale(0.7) rotate(-10deg); }
+    100% { top: 5%;   left: -5%; transform: scale(1.1) rotate(6deg); }
+}
+
+/* ----------------------------------------------------------
+   Theme toggle button
+   ---------------------------------------------------------- */
+.theme-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 200;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--accent);
+}
+
+.settings-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 76px;
+    z-index: 200;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--muted);
+    font-size: 1.125rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.settings-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.settings-panel {
+    position: fixed;
+    bottom: 76px;
+    right: 24px;
+    z-index: 199;
+    width: 240px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.settings-panel--open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.settings-panel__head {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.settings-panel__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    cursor: default;
+}
+
+.settings-panel__row span {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--text);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.settings-panel__row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.settings-panel__row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+}
+
+.settings-panel__reset {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 6px 0;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.settings-panel__reset:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ----------------------------------------------------------
+   Header
+   ---------------------------------------------------------- */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: linear-gradient(180deg, var(--bg) 0%, rgba(10,10,15,0.92) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.header__logo {
+    position: absolute;
+    top: 50%;
+    left: 24px;
+    transform: translateY(-50%);
+    width: 180px;
+    height: auto;
+    opacity: 0.9;
+    z-index: 101;
+    filter: brightness(0) invert(1);
+    transition: opacity 0.35s ease;
+}
+
+.header__logo:hover {
+    opacity: 1;
+}
+
+html.light .header__logo {
+    filter: brightness(0) invert(0);
+    opacity: 0.7;
+}
+
+html.light .header__logo:hover {
+    opacity: 0.9;
+}
+
+.header__inner {
+    max-width: var(--max-width);
+    padding: 30px var(--spacing-md) 22px;
+    text-align: center;
+}
+
+.header__title {
+    display: inline-block;
+    font-family: var(--font-cjk);
+    font-size: clamp(1.125rem, 5.5vw, 2.8rem);
+    font-weight: 700;
+    color: var(--heading);
+    line-height: 1.15;
+    margin-bottom: 10px;
+    letter-spacing: 0.06em;
+    position: relative;
+}
+
+.header__title::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 1px;
+}
+
+.header__subtitle {
+    font-family: var(--font-cjk);
+    font-size: clamp(0.5625rem, 1.4vw, 0.75rem);
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 2px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.header__range {
+    font-family: var(--font-mono);
+    font-size: clamp(0.5rem, 1.2vw, 0.6875rem);
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 0;
+    letter-spacing: 0.06em;
+}
+
+/* ----------------------------------------------------------
+   Header inline marquee
+   ---------------------------------------------------------- */
+.header__marq-wrap {
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+}
+
+.header__marq {
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 400;
+    color: #1a5c1a;
+    line-height: 1.3;
+    user-select: none;
+    flex: 1 1 0%;
+    min-width: 0;
+    padding: 3px 0;
+}
+
+.header__marq-inner {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+.header__marq--left .header__marq-inner {
+    animation: marqScroll 16s linear infinite;
+}
+
+.header__marq--right .header__marq-inner {
+    animation: marqScroll 18s linear infinite;
+}
+
+@keyframes marqScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.header__subtitle {
+    font-family: var(--font-cjk);
+    font-size: clamp(0.625rem, 1.8vw, 0.8125rem);
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: 0;
+}
+
+.header__range {
+    font-family: var(--font-cjk);
+    font-size: clamp(0.5625rem, 1.5vw, 0.6875rem);
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: 0;
+}
+
+/* ----------------------------------------------------------
+   Main area
+   ---------------------------------------------------------- */
+.main {
+    padding-top: 155px;
+    padding-bottom: 80px;
+}
+
+/* ----------------------------------------------------------
+   Timeline container
+   ---------------------------------------------------------- */
+.timeline {
+    position: relative;
+    max-width: var(--max-width);
+    padding-left: var(--card-offset);
+    padding-right: var(--spacing-md);
+}
+
+/* Vertical line */
+.timeline::before {
+    content: "";
+    position: absolute;
+    left: var(--line-offset);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--line);
+}
+
+/* ----------------------------------------------------------
+   Season sections
+   ---------------------------------------------------------- */
+.season {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.season:last-child {
+    margin-bottom: 0;
+}
+
+.season__title {
+    position: relative;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: left;
+    margin-bottom: var(--spacing-xl);
+    padding: 14px 0;
+    letter-spacing: 0.08em;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.season__title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 40px;
+    height: 2px;
+    background: var(--accent);
+}
+
+.season__title::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    width: 40px;
+    height: 2px;
+    background: var(--accent);
+}
+
+/* ----------------------------------------------------------
+   Entry (timeline item)
+   ---------------------------------------------------------- */
+.entry {
+    position: relative;
+    margin-bottom: var(--spacing-2xl);
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.entry--visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Dot on timeline */
+.entry::before {
+    content: "";
+    position: absolute;
+    left: -35px;
+    top: 24px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent);
+}
+
+/* Horizontal connector from dot to card */
+.entry::after {
+    content: "";
+    position: absolute;
+    left: -27px;
+    top: 27px;
+    width: 27px;
+    height: 1px;
+    background-color: var(--border);
+}
+
+/* ----------------------------------------------------------
+   Entry date
+   ---------------------------------------------------------- */
+.entry__date {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: var(--spacing-xs);
+}
+
+/* ----------------------------------------------------------
+   Entry card
+   ---------------------------------------------------------- */
+.entry__card {
+    position: relative;
+    background-color: var(--card-bg);
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    overflow: hidden;
+    isolation: isolate;
+    cursor: default;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                border-color 0.4s ease,
+                box-shadow 0.4s ease;
+}
+
+.entry__card:hover {
+    transform: scale(calc(1 + var(--hover-scale, 3) * 0.01));
+    border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 50%, var(--border));
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.entry__card:hover::before {
+    background: color-mix(in srgb, var(--card-accent, transparent) 10%, var(--hover-overlay));
+}
+
+/* ----------------------------------------------------------
+   Extra detail revealed on hover
+   ---------------------------------------------------------- */
+.entry__extra {
+    position: relative;
+    z-index: 1;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    margin-top: 0;
+    border-top: 1px solid transparent;
+    transition: max-height 0.45s ease,
+                opacity 0.35s ease,
+                margin-top 0.35s ease,
+                border-color 0.35s ease;
+}
+
+.entry__card:hover .entry__extra {
+    max-height: 300px;
+    opacity: 1;
+    margin-top: 14px;
+    border-color: var(--border);
+}
+
+.entry__type {
+    display: block;
+    font-family: var(--font-cjk);
+    font-size: 0.75rem;
+    color: var(--text);
+    line-height: 1.7;
+    padding-top: 6px;
+    min-height: 1.275rem;
+}
+
+.entry__type::after {
+    content: "▌";
+    color: var(--accent);
+    animation: cursorBlink 0.8s step-end infinite;
+}
+
+.entry__type--done::after {
+    animation: none;
+    opacity: 0;
+}
+
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* ----------------------------------------------------------
+   Story sub-card (appears below main card on hover)
+   ---------------------------------------------------------- */
+.entry__story {
+    position: relative;
+    z-index: 0;
+    margin-left: 8px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    background: var(--story-bg);
+    border: 1px dashed var(--border);
+    padding: 0 16px;
+    transition: max-height 0.45s ease,
+                opacity 0.35s ease,
+                padding 0.35s ease,
+                margin-top 0.35s ease;
+}
+
+.entry:hover .entry__story {
+    max-height: 200px;
+    opacity: 1;
+    padding: 12px 16px;
+    margin-top: 8px;
+}
+
+.entry__story-head {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.entry__story-text {
+    font-family: var(--font-cjk);
+    font-size: 0.75rem;
+    color: var(--text);
+    line-height: 1.7;
+}
+
+.entry__extra-label {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* Dark overlay on card background for text readability */
+.entry__card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 0;
+    pointer-events: none;
+    transition: background 0.35s ease;
+}
+
+/* Ensure text stays above background */
+.entry__ver,
+.entry__title,
+.entry__subtitle,
+.entry__desc,
+.entry__points,
+.entry__extra,
+.entry__date {
+    position: relative;
+    z-index: 1;
+}
+
+/* Card text over background image: force white for readability */
+.entry__card .entry__title {
+    color: #ffffff;
+}
+
+.entry__card .entry__subtitle {
+    color: #cccccc;
+}
+
+.entry__card .entry__desc {
+    color: #e0e0e0;
+}
+
+.entry__card .entry__points li {
+    color: #e0e0e0;
+}
+
+.entry__card .entry__type {
+    color: #e0e0e0;
+}
+
+.entry__card .entry__date {
+    color: #aaaaaa;
+}
+
+/* ----------------------------------------------------------
+   Version tag
+   ---------------------------------------------------------- */
+.entry__ver {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--amber);
+    margin-bottom: var(--spacing-xs);
+}
+
+.entry__ver--test {
+    color: var(--muted);
+}
+
+/* ----------------------------------------------------------
+   Entry title (Chinese)
+   ---------------------------------------------------------- */
+.entry__title {
+    font-family: var(--font-art);
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    font-weight: 400;
+    color: var(--heading);
+    line-height: 1.5;
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+    padding-left: 14px;
+    border-left: 3px solid var(--accent);
+}
+
+/* ----------------------------------------------------------
+   Entry subtitle (English)
+   ---------------------------------------------------------- */
+.entry__subtitle {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.4;
+}
+
+/* ----------------------------------------------------------
+   Entry description (for test entries)
+   ---------------------------------------------------------- */
+.entry__desc {
+    font-size: 0.8125rem;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* ----------------------------------------------------------
+   Entry points (bullets for version entries)
+   ---------------------------------------------------------- */
+.entry__points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.entry__points li {
+    font-size: 0.8125rem;
+    color: var(--text);
+    line-height: 1.6;
+    padding-left: var(--spacing-md);
+    position: relative;
+}
+
+.entry__points li::before {
+    content: "-";
+    position: absolute;
+    left: 0;
+    color: var(--muted);
+}
+
+.entry__card .entry__points li::before {
+    color: #777777;
+}
+
+/* ----------------------------------------------------------
+   Footer
+   ---------------------------------------------------------- */
+.footer {
+    max-width: var(--max-width);
+    padding: var(--spacing-xl) var(--spacing-md);
+    border-top: 1px solid var(--border);
+    text-align: center;
+}
+
+.footer p {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--muted);
+}
+
+/* ----------------------------------------------------------
+   Responsive: Mobile (<768px)
+   ---------------------------------------------------------- */
+@media (max-width: 768px) {
+    :root {
+        --line-offset: 24px;
+        --card-offset: 52px;
+        --max-width: calc(100vw - 24px);
+    }
+
+    .header__inner {
+        padding: 20px 12px 16px;
+    }
+
+    .header__logo {
+        top: 50%;
+        left: 12px;
+        width: 120px;
+        transform: translateY(-50%);
+    }
+
+    .header__title {
+        font-size: clamp(0.9375rem, 5.5vw, 1.5rem);
+        margin-bottom: 8px;
+    }
+
+    .header__subtitle {
+        font-size: 0.5625rem;
+        letter-spacing: 0.08em;
+    }
+
+    .header__range {
+        font-size: 0.5rem;
+    }
+
+    .header__marq {
+        font-size: 0.5rem;
+    }
+
+    .header__marq-inner {
+        font-size: 0.5rem;
+    }
+
+    .main {
+        padding-top: 130px;
+        padding-bottom: 48px;
+    }
+
+    .timeline {
+        padding-left: var(--card-offset);
+        padding-right: 8px;
+    }
+
+    .timeline::before {
+        left: var(--line-offset);
+    }
+
+    .entry::before {
+        left: -31px;
+        top: 20px;
+        width: 8px;
+        height: 8px;
+    }
+
+    .entry::after {
+        left: -23px;
+        top: 23px;
+        width: 23px;
+    }
+
+    .entry__card {
+        padding: 16px 16px;
+        border-radius: 6px;
+    }
+
+    .season__title {
+        font-size: 0.6875rem;
+        margin-bottom: var(--spacing-lg);
+        padding: 10px 0;
+    }
+
+    .season__title::before,
+    .season__title::after {
+        width: 24px;
+    }
+
+    .entry {
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .entry__title {
+        font-size: clamp(1.125rem, 6vw, 2rem);
+        padding-left: 0;
+        letter-spacing: 0.14em;
+    }
+
+    .entry__subtitle {
+        font-size: 0.75rem;
+    }
+
+    .entry__desc {
+        font-size: 0.75rem;
+    }
+
+    .entry__points li {
+        font-size: 0.75rem;
+    }
+
+    .entry__type {
+        font-size: 0.6875rem;
+    }
+
+    .entry__story-text {
+        font-size: 0.6875rem;
+    }
+
+    .settings-panel {
+        width: calc(100vw - 48px);
+        right: 24px;
+    }
+
+    .settings-btn {
+        right: 76px;
+    }
+}
