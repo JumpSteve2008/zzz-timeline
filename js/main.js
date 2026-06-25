@@ -6,7 +6,7 @@
 
 /* Service Worker for PWA */
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js");
+    navigator.serviceWorker.register("sw.js");
 }
 
 (function initTimeline() {
